@@ -1,0 +1,101 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Preferences -->
+    <preference for="Klevu\AnalyticsApi\Api\Data\ProcessEventsResultInterface"
+                type="Klevu\Analytics\Model\ProcessEventsResult"/>
+
+    <preference for="Klevu\Analytics\Service\Action\ParseFilepathActionInterface"
+                type="Klevu\Analytics\Service\Action\ParseFilepath"/>
+
+    <!-- DI -->
+    <type name="Klevu\Analytics\Service\ProcessEvents">
+        <arguments>
+            <argument name="pipelineContextProviders" xsi:type="array">
+                <item name="auth" xsi:type="object">Klevu\PlatformPipelines\Service\Provider\PipelineContext\AuthProvider</item>
+                <item name="store" xsi:type="object">Klevu\PlatformPipelines\Service\Provider\PipelineContext\StoreProvider</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <type name="Klevu\PlatformPipelines\ObjectManager\PipelineFqcnProvider">
+        <arguments>
+            <argument name="namespaces" xsi:type="array">
+                <item name="\Klevu\Analytics\Pipeline\" xsi:type="const">Klevu\Pipelines\ObjectManager\ObjectManagerInterface::PRIORITY_NAMESPACE_SORT_ORDER</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Logging -->
+    <virtualType name="Klevu\Analytics\Service\Provider\LogFileNameProvider"
+                 type="Klevu\Logger\Service\Provider\LogFileNameProvider">
+        <arguments>
+            <argument name="baseFileName" xsi:type="string">analytics.log</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Klevu\Analytics\Service\IsLoggingEnabledService"
+                 type="Klevu\Logger\Service\IsLoggingEnabledService">
+        <arguments>
+            <argument name="minLogLevelConfigPath"
+                      xsi:type="string">klevu/analytics/log_level</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Klevu\Analytics\Logger\Handler\LogIfConfigured"
+                 type="Klevu\Logger\Handler\LogIfConfigured">
+        <arguments>
+            <argument name="logFileNameProvider"
+                      xsi:type="object">Klevu\Analytics\Service\Provider\LogFileNameProvider</argument>
+            <argument name="loggingEnabledService"
+                      xsi:type="object">Klevu\Analytics\Service\IsLoggingEnabledService</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Klevu\Analytics\Logger\Logger"
+                 type="Magento\Framework\Logger\Monolog">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="debug"
+                      xsi:type="object">Klevu\Logger\Handler\LogDisabled</item>
+                <item name="klevu_analytics_logger"
+                      xsi:type="object">Klevu\Analytics\Logger\Handler\LogIfConfigured</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <type name="Klevu\Analytics\Pipeline\Analytics\Stage\Log">
+        <arguments>
+            <argument name="logger" xsi:type="object">Klevu\Analytics\Logger\Logger</argument>
+        </arguments>
+    </type>
+
+    <type name="Klevu\Configuration\Service\Provider\Sdk\UserAgent\PlatformUserAgentProvider">
+        <arguments>
+            <argument name="systemInformationProviders" xsi:type="array">
+                <item name="klevu-m2-analytics" xsi:type="object">Klevu\Analytics\Service\Provider\Sdk\UserAgent\SystemInformation\AnalyticsProvider</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- SDK -->
+    <virtualType name="Klevu\Analytics\Service\Analytics\CollectService"
+                 type="Klevu\PhpSDK\Service\Analytics\CollectService">
+        <arguments>
+            <argument name="baseUrlsProvider" xsi:type="object">Klevu\Configuration\Service\Provider\Sdk\BaseUrlsProvider</argument>
+            <argument name="httpClient" xsi:type="object">GuzzleHttp\Client</argument>
+            <argument name="logger" xsi:type="object">Klevu\Analytics\Logger\Logger</argument>
+        </arguments>
+    </virtualType>
+
+    <type name="Klevu\Analytics\Pipeline\Analytics\Stage\SendAnalyticsCollectEvents">
+        <arguments>
+            <argument name="analyticsCollectService" xsi:type="object">Klevu\Analytics\Service\Analytics\CollectService</argument>
+        </arguments>
+    </type>
+
+    <type name="Klevu\PlatformPipelines\ObjectManager\Container">
+        <arguments>
+            <argument name="preferences" xsi:type="array">
+                <item name="Klevu\Pipelines\Pipeline\Stage\Log" xsi:type="string">Klevu\Analytics\Pipeline\Analytics\Stage\Log</item>
+                <item name="Klevu\PhpSDKPipelines\Pipeline\Stage\SendAnalyticsCollectEvents" xsi:type="string">Klevu\Analytics\Pipeline\Analytics\Stage\SendAnalyticsCollectEvents</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

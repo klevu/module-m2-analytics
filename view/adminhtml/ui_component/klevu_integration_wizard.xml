@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+
+<!-- Copyright © Klevu Oy. All rights reserved. See LICENSE.txt for license details. -->
+
+<form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+
+    <fieldset name="klevu_analytics_integration"
+              sortOrder="100"
+              component="Klevu_Analytics/js/form/integration/provider">
+        <settings>
+            <label translate="true">Analytics</label>
+            <collapsible>true</collapsible>
+            <opened>false</opened>
+        </settings>
+    </fieldset>
+</form>

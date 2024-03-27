@@ -5,6 +5,12 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
     <module name="Klevu_Analytics">
-        <sequence/>
+        <sequence>
+            <module name="Magento_Framework"/>
+            <module name="Klevu_AnalyticsApi"/>
+            <module name="Klevu_Configuration"/>
+            <module name="Klevu_Logger"/>
+            <module name="Klevu_PlatformPipelines"/>
+        </sequence>
     </module>
 </config>
