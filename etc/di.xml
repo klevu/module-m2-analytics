@@ -10,6 +10,7 @@
     <!-- DI -->
     <type name="Klevu\Analytics\Service\ProcessEvents">
         <arguments>
+            <argument name="pipelineBuilder" xsi:type="object">Klevu\Analytics\Pipeline\PipelineBuilder</argument>
             <argument name="pipelineContextProviders" xsi:type="array">
                 <item name="auth" xsi:type="object">Klevu\PlatformPipelines\Service\Provider\PipelineContext\AuthProvider</item>
                 <item name="store" xsi:type="object">Klevu\PlatformPipelines\Service\Provider\PipelineContext\StoreProvider</item>
@@ -74,6 +75,13 @@
         </arguments>
     </type>
 
+    <virtualType name="Klevu\Analytics\Pipeline\PipelineBuilder"
+                 type="Klevu\PlatformPipelines\Pipeline\PipelineBuilder">
+        <arguments>
+            <argument name="logger" xsi:type="object">Klevu\Analytics\Logger\Logger</argument>
+        </arguments>
+    </virtualType>
+
     <!-- SDK -->
     <virtualType name="Klevu\Analytics\Service\Analytics\CollectService"
                  type="Klevu\PhpSDK\Service\Analytics\CollectService">
@@ -81,6 +89,8 @@
             <argument name="baseUrlsProvider" xsi:type="object">Klevu\Configuration\Service\Provider\Sdk\BaseUrlsProvider</argument>
             <argument name="httpClient" xsi:type="object">GuzzleHttp\Client</argument>
             <argument name="logger" xsi:type="object">Klevu\Analytics\Logger\Logger</argument>
+            <argument name="requestFactory" xsi:type="object">GuzzleHttp\Psr7\HttpFactory</argument>
+            <argument name="userAgentProvider" xsi:type="object">Klevu\Configuration\Service\Provider\Sdk\UserAgentProvider</argument>
         </arguments>
     </virtualType>
 
@@ -95,6 +105,7 @@
             <argument name="preferences" xsi:type="array">
                 <item name="Klevu\Pipelines\Pipeline\Stage\Log" xsi:type="string">Klevu\Analytics\Pipeline\Analytics\Stage\Log</item>
                 <item name="Klevu\PhpSDKPipelines\Pipeline\Stage\SendAnalyticsCollectEvents" xsi:type="string">Klevu\Analytics\Pipeline\Analytics\Stage\SendAnalyticsCollectEvents</item>
+                <item name="Klevu\PhpSDK\Service\Analytics\CollectService" xsi:type="string">Klevu\Analytics\Service\Analytics\CollectService</item>
             </argument>
         </arguments>
     </type>
