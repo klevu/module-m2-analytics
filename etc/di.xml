@@ -50,11 +50,9 @@
         </arguments>
     </virtualType>
     <virtualType name="Klevu\Analytics\Logger\Logger"
-                 type="Magento\Framework\Logger\Monolog">
+                 type="Klevu\Logger\Logger\Logger"> <!-- Virtual type defined in module-m2-logger/etc/di.xml -->
         <arguments>
             <argument name="handlers" xsi:type="array">
-                <item name="debug"
-                      xsi:type="object">Klevu\Logger\Handler\LogDisabled</item>
                 <item name="klevu_analytics_logger"
                       xsi:type="object">Klevu\Analytics\Logger\Handler\LogIfConfigured</item>
             </argument>
