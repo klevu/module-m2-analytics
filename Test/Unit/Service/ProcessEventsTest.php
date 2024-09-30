@@ -10,7 +10,6 @@ namespace Klevu\Analytics\Test\Unit\Service;
 
 use Klevu\Analytics\Exception\InvalidStatusTransitionException;
 use Klevu\Analytics\Model\ProcessEventsResult;
-use Klevu\Analytics\Service\Action\ParseFilepathActionInterface;
 use Klevu\Analytics\Service\ProcessEvents;
 use Klevu\AnalyticsApi\Api\Data\ProcessEventsResultInterfaceFactory;
 use Klevu\AnalyticsApi\Api\EventsDataProviderInterface;
@@ -23,6 +22,8 @@ use Klevu\Pipelines\Pipeline\Context;
 use Klevu\Pipelines\Pipeline\ContextFactory as PipelineContextFactory;
 use Klevu\Pipelines\Pipeline\PipelineBuilderInterface;
 use Klevu\Pipelines\Pipeline\PipelineInterface;
+use Klevu\PlatformPipelines\Api\ConfigurationOverridesHandlerInterface;
+use Klevu\PlatformPipelines\Api\PipelineConfigurationProviderInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NotFoundException;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -289,8 +290,6 @@ class ProcessEventsTest extends TestCase
     private function initProcessEventsService(array $constructorArgs = []): ProcessEvents
     {
         return new ProcessEvents(
-            parseFilepathAction: $constructorArgs['parseFilepathAction']
-                ?? $this->getMockParseFilepathAction(),
             pipelineBuilder: $constructorArgs['pipelineBuilder']
                 ?? $this->getMockPipelineBuilder(),
             eventsDataProvider: $constructorArgs['eventsDataProvider']
@@ -301,19 +300,21 @@ class ProcessEventsTest extends TestCase
                 ?? [],
             processEventsResultFactory: $constructorArgs['processEventsResultFactory']
                 ?? $this->getMockProcessEventsResultFactory(),
-            pipelineConfigurationFilepath: $constructorArgs['pipelineConfigurationFilepath']
+            pipelineIdentifier: $constructorArgs['pipelineIdentifier']
                 ?? '',
-            pipelineConfigurationOverrideFilepaths: $constructorArgs['pipelineConfigurationOverrideFilepaths']
-                ?? [],
+            pipelineConfigurationProvider: $constructorArgs['pipelineConfigurationProvider']
+                ?? $this->getMockPipelineConfigurationProvider(),
+            configurationOverridesHandler: $constructorArgs['configurationOverridesHandler']
+                ?? $this->getMockConfigurationOverridesHandler(),
         );
     }
 
     /**
-     * @return MockObject&ParseFilepathActionInterface
+     * @return MockObject&ConfigurationOverridesHandlerInterface
      */
-    private function getMockParseFilepathAction(): MockObject&ParseFilepathActionInterface
+    private function getMockConfigurationOverridesHandler(): MockObject&ConfigurationOverridesHandlerInterface
     {
-        return $this->getMockBuilder(ParseFilepathActionInterface::class)
+        return $this->getMockBuilder(ConfigurationOverridesHandlerInterface::class)
             ->getMock();
     }
 
@@ -421,5 +422,14 @@ class ProcessEventsTest extends TestCase
             ->willReturn(new ProcessEventsResult());
 
         return $mockProcessEventsResultFactory;
+    }
+
+    /**
+     * @return MockObject&PipelineConfigurationProviderInterface
+     */
+    private function getMockPipelineConfigurationProvider(): MockObject&PipelineConfigurationProviderInterface
+    {
+        return $this->getMockBuilder(PipelineConfigurationProviderInterface::class)
+            ->getMock();
     }
 }

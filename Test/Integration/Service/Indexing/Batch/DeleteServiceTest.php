@@ -57,8 +57,8 @@ class DeleteServiceTest extends TestCase
         );
 
         $userAgent = $provider->execute();
-        $this->assertStringMatchesFormat(
-            format: '%A(%Aklevu-m2-analytics/%d.%d.%d.%d%A)%A',
+        $this->assertMatchesRegularExpression(
+            pattern: '#^.*\(.*klevu-m2-analytics(/\d+\.\d+\.\d+\.\d+)?.*\).*$#',
             string: $userAgent,
         );
     }

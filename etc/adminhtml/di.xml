@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<!-- Copyright © Klevu Oy. All rights reserved. See LICENSE.txt for license details. -->
+
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <virtualType name="Klevu\Configuration\ViewModel\Config\Information\KnowledgeBase"
+                 type="Klevu\Configuration\ViewModel\Config\Information\ArticleList">
+        <arguments>
+            <argument name="articles" xsi:type="array">
+                <item name="documentation" xsi:type="array">
+                    <item name="analytics" xsi:type="array">
+                        <item name="link" xsi:type="string"><![CDATA[https://docs.klevu.com/klevu-magento-v4/analytics-overview]]></item>
+                        <item name="order" xsi:type="number">300</item>
+                        <item name="title" xsi:type="string">Analytics</item>
+                    </item>
+                </item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+</config>

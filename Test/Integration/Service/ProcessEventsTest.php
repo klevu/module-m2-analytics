@@ -25,17 +25,29 @@ use Klevu\Pipelines\Model\PipelineResult;
 use Klevu\Pipelines\Pipeline\Context;
 use Klevu\Pipelines\Pipeline\PipelineBuilderInterface;
 use Klevu\Pipelines\Pipeline\PipelineInterface;
+use Klevu\PlatformPipelines\Api\PipelineConfigurationOverridesFilepathsProviderInterface;
+use Klevu\PlatformPipelines\Api\PipelineConfigurationProviderInterface;
 use Klevu\PlatformPipelines\Api\PipelineContextProviderInterface;
+use Klevu\TestFixtures\Traits\ObjectInstantiationTrait;
+use Klevu\TestFixtures\Traits\TestImplementsInterfaceTrait;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NotFoundException;
 use Magento\Framework\Exception\RuntimeException;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\TestFramework\ObjectManager;
+use PHPUnit\Framework\Exception as PHPUnitException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @method ProcessEvents instantiateTestObject(array $args = [])
+ * @covers \Klevu\Analytics\Service\ProcessEvents
+ */
 class ProcessEventsTest extends TestCase
 {
+    use ObjectInstantiationTrait;
+    use TestImplementsInterfaceTrait;
+
     /**
      * @var ObjectManagerInterface|null
      */
@@ -49,20 +61,21 @@ class ProcessEventsTest extends TestCase
         parent::setUp();
 
         $this->objectManager = ObjectManager::getInstance();
-    }
 
-    public function testInstanceOfInterface(): void
-    {
-        /** @var ProcessEvents $processEventsService */
-        $processEventsService = $this->objectManager->create(ProcessEvents::class, [
+        $this->implementationFqcn = ProcessEvents::class;
+        $this->interfaceFqcn = ProcessEventsServiceInterface::class;
+
+        /** @var MockObject&PipelineConfigurationProviderInterface $mockPipelineConfigurationProvider */
+        $mockPipelineConfigurationProvider = $this->getMockBuilder(PipelineConfigurationProviderInterface::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $mockPipelineConfigurationProvider->method('getPipelineConfigurationFilepathByIdentifier')
+            ->willReturn('/foo/bar.yml');
+        $this->constructorArgumentDefaults = [
             'eventsDataProvider' => $this->getMockEventsDataProvider(),
-            'pipelineConfigurationFilepath' => __DIR__ . '/fixtures/pipeline/process-events.yml',
-        ]);
-
-        $this->assertInstanceOf(
-            ProcessEventsServiceInterface::class,
-            $processEventsService,
-        );
+            'pipelineConfigurationProvider' => $mockPipelineConfigurationProvider,
+            'pipelineIdentifier' => 'PHPUNIT::test',
+        ];
     }
 
     /**
@@ -92,96 +105,48 @@ class ProcessEventsTest extends TestCase
     public function testConstruct_InvalidPipelineContextProviders(
         mixed $pipelineContextProviders,
     ): void {
+        $pipelineIdentifier = 'ORDER::queued';
+
         $this->expectException(RuntimeException::class);
 
-        $this->objectManager->create(ProcessEvents::class, [
+        $this->instantiateTestObject([
             'eventsDataProvider' => $this->getMockEventsDataProvider(),
             'pipelineContextProviders' => $pipelineContextProviders,
-            'pipelineConfigurationFilepath' => __DIR__ . '/fixtures/pipeline/process-events.yml',
-        ]);
-    }
-
-    /**
-     * @return mixed[][]
-     */
-    public static function dataProvider_testConstruct_InvalidPipelineConfigurationFilepath(): array
-    {
-        return [
-            [
-                ['foo'],
-            ],
-            [
-                (object)['foo'],
-            ],
-            [
-                [(object)['foo']],
-            ],
-        ];
-    }
-
-    /**
-     * @dataProvider dataProvider_testConstruct_InvalidPipelineConfigurationFilepath
-     */
-    public function testConstruct_InvalidPipelineConfigurationFilepath(
-        mixed $pipelineConfigurationFilepath,
-    ): void {
-        $this->expectException(RuntimeException::class);
-
-        $this->objectManager->create(ProcessEvents::class, [
-            'eventsDataProvider' => $this->getMockEventsDataProvider(),
-            'pipelineConfigurationFilepath' => $pipelineConfigurationFilepath,
+            'pipelineConfigurationProvider' => $this->getPipelineConfigurationProvider(
+                pipelineIdentifier: $pipelineIdentifier,
+                pipelineConfigurationFilepath: __DIR__ . '/fixtures/pipeline/process-events.yml',
+            ),
+            'pipelineIdentifier' => $pipelineIdentifier,
         ]);
     }
 
     public function testConstruct_PipelineConfigurationFilepathNotFound(): void
     {
+        $pipelineIdentifier = 'ORDER::queued';
+
         $this->expectException(NotFoundException::class);
 
-        $this->objectManager->create(ProcessEvents::class, [
+        $this->instantiateTestObject([
             'eventsDataProvider' => $this->getMockEventsDataProvider(),
-            'pipelineConfigurationFilepath' => '/foo/bar',
-        ]);
-    }
-
-    /**
-     * @return mixed[][]
-     */
-    public static function dataProvider_testConstruct_InvalidPipelineConfigurationOverrideFilepaths(): array
-    {
-        return [
-            [
-                'foo',
-            ],
-            [
-                (object)['foo'],
-            ],
-            [
-                [(object)['foo']],
-            ],
-        ];
-    }
-
-    /**
-     * @dataProvider dataProvider_testConstruct_InvalidPipelineConfigurationOverrideFilepaths
-     */
-    public function testConstruct_InvalidPipelineConfigurationOverrideFilepaths(
-        mixed $pipelineConfigurationOverrideFilepaths,
-    ): void {
-        $this->expectException(RuntimeException::class);
-
-        $this->objectManager->create(ProcessEvents::class, [
-            'eventsDataProvider' => $this->getMockEventsDataProvider(),
-            'pipelineConfigurationFilepath' => __DIR__ . '/fixtures/pipeline/process-events.yml',
-            'pipelineConfigurationOverrideFilepaths' => $pipelineConfigurationOverrideFilepaths,
+            'pipelineConfigurationProvider' => $this->getPipelineConfigurationProvider(
+                pipelineIdentifier: $pipelineIdentifier,
+                pipelineConfigurationFilepath: '/foo/bar',
+            ),
+            'pipelineIdentifier' => $pipelineIdentifier,
         ]);
     }
 
     public function testExecute_HandleInvalidPipelineConfiguration(): void
     {
-        /** @var ProcessEvents $processEventsService */
-        $processEventsService = $this->objectManager->create(ProcessEvents::class, [
+        $pipelineIdentifier = 'ORDER::queued';
+
+        $processEventsService = $this->instantiateTestObject([
             'eventsDataProvider' => $this->getMockEventsDataProvider(),
-            'pipelineConfigurationFilepath' => __DIR__ . '/fixtures/pipeline/process-events.invalid.yml',
+            'pipelineConfigurationProvider' => $this->getPipelineConfigurationProvider(
+                pipelineIdentifier: $pipelineIdentifier,
+                pipelineConfigurationFilepath: __DIR__ . '/fixtures/pipeline/process-events.invalid.yml',
+            ),
+            'pipelineIdentifier' => $pipelineIdentifier,
         ]);
 
         $this->expectException(InvalidPipelineConfigurationException::class);
@@ -237,6 +202,8 @@ class ProcessEventsTest extends TestCase
     public function testExecute_HandlePipelineExecutionFailure(
         \Throwable $exception,
     ): void {
+        $pipelineIdentifier = 'ORDER::queued';
+
         $mockPipeline = $this->getMockPipeline();
         $mockPipeline->method('execute')
             ->willThrowException($exception);
@@ -245,11 +212,14 @@ class ProcessEventsTest extends TestCase
             pipeline: $mockPipeline,
         );
 
-        /** @var ProcessEvents $processEventsService */
-        $processEventsService = $this->objectManager->create(ProcessEvents::class, [
+        $processEventsService = $this->instantiateTestObject([
             'pipelineBuilder' => $mockPipelineBuilder,
             'eventsDataProvider' => $this->getMockEventsDataProvider(),
-            'pipelineConfigurationFilepath' => __DIR__ . '/fixtures/pipeline/process-events.yml',
+            'pipelineConfigurationProvider' => $this->getPipelineConfigurationProvider(
+                pipelineIdentifier: $pipelineIdentifier,
+                pipelineConfigurationFilepath: __DIR__ . '/fixtures/pipeline/process-events.yml',
+            ),
+            'pipelineIdentifier' => $pipelineIdentifier,
         ]);
 
         $result = $processEventsService->execute(
@@ -265,6 +235,8 @@ class ProcessEventsTest extends TestCase
 
     public function testExecute_Success(): void
     {
+        $pipelineIdentifier = 'ORDER::queued';
+
         $mockPipeline = $this->getMockPipeline();
         $mockPipeline->method('execute')
             ->with(
@@ -294,8 +266,7 @@ class ProcessEventsTest extends TestCase
             pipeline: $mockPipeline,
         );
 
-        /** @var ProcessEvents $processEventsService */
-        $processEventsService = $this->objectManager->create(ProcessEvents::class, [
+        $processEventsService = $this->instantiateTestObject([
             'pipelineBuilder' => $mockPipelineBuilder,
             'eventsDataProvider' => $this->getMockEventsDataProvider([
                 'foo',
@@ -305,7 +276,11 @@ class ProcessEventsTest extends TestCase
             'pipelineContextProviders' => [
                 'test' => $this->getMockPipelineContextProvider(['wom' => 'bat']),
             ],
-            'pipelineConfigurationFilepath' => __DIR__ . '/fixtures/pipeline/process-events.yml',
+            'pipelineConfigurationProvider' => $this->getPipelineConfigurationProvider(
+                pipelineIdentifier: $pipelineIdentifier,
+                pipelineConfigurationFilepath: __DIR__ . '/fixtures/pipeline/process-events.yml',
+            ),
+            'pipelineIdentifier' => $pipelineIdentifier,
         ]);
 
         $result = $processEventsService->execute(
@@ -379,5 +354,40 @@ class ProcessEventsTest extends TestCase
             ->willReturn($pipelineContext);
 
         return $pipelineContextProvider;
+    }
+
+    /**
+     * @param string $pipelineIdentifier
+     * @param string $pipelineConfigurationFilepath
+     * @param string[] $pipelineConfigurationOverridesFilepaths
+     *
+     * @return PipelineConfigurationProviderInterface
+     * @throws PHPUnitException
+     */
+    private function getPipelineConfigurationProvider(
+        string $pipelineIdentifier,
+        string $pipelineConfigurationFilepath,
+        array $pipelineConfigurationOverridesFilepaths = [],
+    ): PipelineConfigurationProviderInterface {
+        /** @var MockObject&PipelineConfigurationOverridesFilepathsProviderInterface $mockPipelineConfigurationOverridesFilepathsProvider */
+        $mockPipelineConfigurationOverridesFilepathsProvider = $this->getMockBuilder(
+            className: PipelineConfigurationOverridesFilepathsProviderInterface::class,
+        )->disableOriginalConstructor()
+        ->getMock();
+        $mockPipelineConfigurationOverridesFilepathsProvider
+            ->method('get')
+            ->willReturn($pipelineConfigurationOverridesFilepaths);
+
+        return $this->objectManager->create(
+            type: PipelineConfigurationProviderInterface::class,
+            arguments: [
+                'pipelineConfigurationFilepaths' => [
+                    $pipelineIdentifier => $pipelineConfigurationFilepath,
+                ],
+                'pipelineConfigurationOverridesFilepathsProviders' => [
+                    $pipelineIdentifier => $mockPipelineConfigurationOverridesFilepathsProvider,
+                ],
+            ],
+        );
     }
 }

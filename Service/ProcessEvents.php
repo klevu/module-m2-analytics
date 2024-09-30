@@ -8,7 +8,6 @@ declare(strict_types=1);
 
 namespace Klevu\Analytics\Service;
 
-use Klevu\Analytics\Service\Action\ParseFilepathActionInterface;
 use Klevu\AnalyticsApi\Api\Data\ProcessEventsResultInterface;
 use Klevu\AnalyticsApi\Api\Data\ProcessEventsResultInterfaceFactory;
 use Klevu\AnalyticsApi\Api\EventsDataProviderInterface;
@@ -17,23 +16,25 @@ use Klevu\AnalyticsApi\Model\Source\ProcessEventsResultStatuses;
 use Klevu\PhpSDK\Exception\ValidationException as PhpSDKValidationException;
 use Klevu\Pipelines\Exception\ExtractionException;
 use Klevu\Pipelines\Exception\ExtractionExceptionInterface;
+use Klevu\Pipelines\Exception\Pipeline\InvalidPipelineConfigurationException;
+use Klevu\Pipelines\Exception\Pipeline\StageException;
 use Klevu\Pipelines\Exception\TransformationException;
 use Klevu\Pipelines\Exception\TransformationExceptionInterface;
 use Klevu\Pipelines\Exception\ValidationException as PipelinesValidationException;
 use Klevu\Pipelines\Exception\ValidationExceptionInterface;
 use Klevu\Pipelines\Pipeline\ContextFactory as PipelineContextFactory;
 use Klevu\Pipelines\Pipeline\PipelineBuilderInterface;
+use Klevu\Pipelines\Pipeline\PipelineInterface;
+use Klevu\PlatformPipelines\Api\ConfigurationOverridesHandlerInterface;
+use Klevu\PlatformPipelines\Api\PipelineConfigurationProviderInterface;
 use Klevu\PlatformPipelines\Api\PipelineContextProviderInterface;
+use Klevu\PlatformPipelines\Exception\CouldNotGenerateConfigurationOverridesException;
 use Magento\Framework\Api\SearchCriteriaInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NotFoundException;
 
 class ProcessEvents implements ProcessEventsServiceInterface
 {
-    /**
-     * @var ParseFilepathActionInterface
-     */
-    private readonly ParseFilepathActionInterface $parseFilepathAction;
     /**
      * @var PipelineBuilderInterface
      */
@@ -61,30 +62,34 @@ class ProcessEvents implements ProcessEventsServiceInterface
     /**
      * @var string[]
      */
-    private array $pipelineConfigurationOverrideFilepaths = [];
+    private readonly array $pipelineConfigurationOverridesFilepaths;
+    /**
+     * @var ConfigurationOverridesHandlerInterface
+     */
+    private ConfigurationOverridesHandlerInterface $configurationOverridesHandler;
 
     /**
-     * @param ParseFilepathActionInterface $parseFilepathAction
      * @param PipelineBuilderInterface $pipelineBuilder
      * @param EventsDataProviderInterface $eventsDataProvider
      * @param PipelineContextFactory $pipelineContextFactory
      * @param PipelineContextProviderInterface[] $pipelineContextProviders
      * @param ProcessEventsResultInterfaceFactory $processEventsResultFactory
-     * @param string $pipelineConfigurationFilepath
-     * @param string[] $pipelineConfigurationOverrideFilepaths
+     * @param string $pipelineIdentifier
+     * @param PipelineConfigurationProviderInterface $pipelineConfigurationProvider
+     * @param ConfigurationOverridesHandlerInterface $configurationOverridesHandler
+     *
      * @throws NotFoundException
      */
     public function __construct(
-        ParseFilepathActionInterface $parseFilepathAction,
         PipelineBuilderInterface $pipelineBuilder,
         EventsDataProviderInterface $eventsDataProvider,
         PipelineContextFactory $pipelineContextFactory,
         array $pipelineContextProviders,
         ProcessEventsResultInterfaceFactory $processEventsResultFactory,
-        string $pipelineConfigurationFilepath,
-        array $pipelineConfigurationOverrideFilepaths = [],
+        string $pipelineIdentifier,
+        PipelineConfigurationProviderInterface $pipelineConfigurationProvider,
+        ConfigurationOverridesHandlerInterface $configurationOverridesHandler,
     ) {
-        $this->parseFilepathAction = $parseFilepathAction;
         $this->pipelineBuilder = $pipelineBuilder;
         $this->eventsDataProvider = $eventsDataProvider;
         $this->pipelineContextFactory = $pipelineContextFactory;
@@ -93,11 +98,11 @@ class ProcessEvents implements ProcessEventsServiceInterface
             [$this, 'addPipelineContextProvider'],
         );
         $this->processEventsResultFactory = $processEventsResultFactory;
-        $this->pipelineConfigurationFilepath = $this->parseFilepathAction->execute($pipelineConfigurationFilepath);
-        array_walk(
-            $pipelineConfigurationOverrideFilepaths,
-            [$this, 'addPipelineConfigurationOverrideFilepath'],
-        );
+        $this->pipelineConfigurationFilepath = $pipelineConfigurationProvider
+            ->getPipelineConfigurationFilepathByIdentifier($pipelineIdentifier);
+        $this->pipelineConfigurationOverridesFilepaths = $pipelineConfigurationProvider
+            ->getPipelineConfigurationOverridesFilepathsByIdentifier($pipelineIdentifier);
+        $this->configurationOverridesHandler = $configurationOverridesHandler;
     }
 
     /**
@@ -105,7 +110,9 @@ class ProcessEvents implements ProcessEventsServiceInterface
      * @param string $via
      *
      * @return ProcessEventsResultInterface
+     * @throws CouldNotGenerateConfigurationOverridesException
      * @throws ExtractionExceptionInterface
+     * @throws InvalidPipelineConfigurationException
      * @throws TransformationExceptionInterface
      * @throws ValidationExceptionInterface
      */
@@ -113,11 +120,7 @@ class ProcessEvents implements ProcessEventsServiceInterface
         ?SearchCriteriaInterface $searchCriteria = null,
         string $via = '',
     ): ProcessEventsResultInterface {
-        $pipeline = $this->pipelineBuilder->buildFromFiles(
-            configurationFilepath: $this->pipelineConfigurationFilepath,
-            overridesFilepaths: $this->pipelineConfigurationOverrideFilepaths,
-        );
-
+        $pipeline = $this->buildPipeline();
         $messages = [];
         try {
             $pipelineResult = $pipeline->execute(
@@ -134,12 +137,28 @@ class ProcessEvents implements ProcessEventsServiceInterface
                 [$pipelineException->getMessage()],
                 method_exists($pipelineException, 'getErrors') ? $pipelineException->getErrors() : [],
             );
-        } catch (LocalizedException $exception) {
+        } catch (StageException $exception) {
             $status = ProcessEventsResultStatuses::ERROR;
+            $pipeline = $exception->getPipeline();
+            $previousException = $exception->getPrevious();
+
             $messages = array_merge(
                 $messages,
-                [$exception->getMessage()],
+                [
+                    __(
+                        'Encountered error in pipeline stage "%1": %2',
+                        $pipeline->getIdentifier(),
+                        $previousException?->getMessage() ?: '',
+                    )->render(),
+                ],
+                method_exists($exception, 'getErrors') ? $exception->getErrors() : [],
+                $previousException && method_exists($previousException, 'getErrors')
+                    ? $previousException->getErrors()
+                    : [],
             );
+        } catch (LocalizedException $exception) {
+            $status = ProcessEventsResultStatuses::ERROR;
+            $messages[] = $exception->getMessage();
         }
 
         $return = $this->processEventsResultFactory->create();
@@ -163,19 +182,6 @@ class ProcessEvents implements ProcessEventsServiceInterface
     }
 
     /**
-     * @param string $pipelineConfigurationOverrideFilepath
-     * @return void
-     * @throws NotFoundException
-     */
-    private function addPipelineConfigurationOverrideFilepath(string $pipelineConfigurationOverrideFilepath): void
-    {
-        $parsedFilepath = $this->parseFilepathAction->execute($pipelineConfigurationOverrideFilepath);
-        if (!in_array($parsedFilepath, $this->pipelineConfigurationOverrideFilepaths, true)) {
-            $this->pipelineConfigurationOverrideFilepaths[] = $parsedFilepath;
-        }
-    }
-
-    /**
      * @param string $via
      * @return \ArrayAccess<int|string, mixed>
      */
@@ -195,5 +201,30 @@ class ProcessEvents implements ProcessEventsServiceInterface
         return $this->pipelineContextFactory->create([
             'data' => $data,
         ]);
+    }
+
+    /**
+     * @return PipelineInterface
+     * @throws InvalidPipelineConfigurationException
+     * @throws CouldNotGenerateConfigurationOverridesException
+     */
+    private function buildPipeline(): PipelineInterface
+    {
+        try {
+            $this->configurationOverridesHandler->execute();
+            $pipeline = $this->pipelineBuilder->buildFromFiles(
+                configurationFilepath: $this->pipelineConfigurationFilepath,
+                overridesFilepaths: $this->pipelineConfigurationOverridesFilepaths,
+            );
+        } catch (\TypeError $exception) { // @phpstan-ignore-line TypeError can be thrown by buildFromFiles
+            throw new InvalidPipelineConfigurationException(
+                pipelineName: null,
+                message: $exception->getMessage(),
+                code: $exception->getCode(),
+                previous: $exception,
+            );
+        }
+
+        return $pipeline;
     }
 }

@@ -39,7 +39,6 @@ define([
 
             self._super();
             klevuIntegrationForm
-                .clearMessages()
                 .hideTabsOnLoad();
 
             return self;
