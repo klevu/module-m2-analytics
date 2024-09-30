@@ -4,10 +4,10 @@
     <preference for="Klevu\AnalyticsApi\Api\Data\ProcessEventsResultInterface"
                 type="Klevu\Analytics\Model\ProcessEventsResult"/>
 
-    <preference for="Klevu\Analytics\Service\Action\ParseFilepathActionInterface"
-                type="Klevu\Analytics\Service\Action\ParseFilepath"/>
-
     <!-- DI -->
+    <virtualType name="Klevu\Analytics\Service\Provider\PipelineConfigurationOverridesFilepathsProvider"
+                 type="Klevu\PlatformPipelines\Service\Provider\PipelineConfigurationOverridesFilepathsProvider"/>
+
     <type name="Klevu\Analytics\Service\ProcessEvents">
         <arguments>
             <argument name="pipelineBuilder" xsi:type="object">Klevu\Analytics\Pipeline\PipelineBuilder</argument>
@@ -15,6 +15,7 @@
                 <item name="auth" xsi:type="object">Klevu\PlatformPipelines\Service\Provider\PipelineContext\AuthProvider</item>
                 <item name="store" xsi:type="object">Klevu\PlatformPipelines\Service\Provider\PipelineContext\StoreProvider</item>
             </argument>
+            <argument name="pipelineConfigurationOverridesFilepathsProvider" xsi:type="object">Klevu\Analytics\Service\Provider\PipelineConfigurationOverridesFilepathsProvider</argument>
         </arguments>
     </type>
 
@@ -80,6 +81,20 @@
         </arguments>
     </virtualType>
 
+    <virtualType name="Klevu\Analytics\Service\Provider\GeneratedConfigurationOverridesFilepathProvider"
+                 type="Klevu\PlatformPipelines\Service\Provider\GeneratedConfigurationOverridesFilepathProvider">
+        <arguments>
+            <argument name="logger" xsi:type="object">Klevu\Analytics\Logger\Logger</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="Klevu\Analytics\Service\ConfigurationOverridesHandler"
+                 type="Klevu\PlatformPipelines\Service\ConfigurationOverridesHandler">
+        <arguments>
+            <argument name="logger" xsi:type="object">Klevu\Analytics\Logger\Logger</argument>
+        </arguments>
+    </virtualType>
+
     <!-- SDK -->
     <virtualType name="Klevu\Analytics\Service\Analytics\CollectService"
                  type="Klevu\PhpSDK\Service\Analytics\CollectService">
@@ -104,6 +119,16 @@
                 <item name="Klevu\Pipelines\Pipeline\Stage\Log" xsi:type="string">Klevu\Analytics\Pipeline\Analytics\Stage\Log</item>
                 <item name="Klevu\PhpSDKPipelines\Pipeline\Stage\SendAnalyticsCollectEvents" xsi:type="string">Klevu\Analytics\Pipeline\Analytics\Stage\SendAnalyticsCollectEvents</item>
                 <item name="Klevu\PhpSDK\Service\Analytics\CollectService" xsi:type="string">Klevu\Analytics\Service\Analytics\CollectService</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Console -->
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="klevu_analytics_regenerate_configuration_overrides"
+                      xsi:type="object">Klevu\Analytics\Console\Command\ConfigurationOverridesRegenerateCommand\Proxy</item>
             </argument>
         </arguments>
     </type>
