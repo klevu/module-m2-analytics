@@ -6,8 +6,8 @@
         "magento/framework": ">= 103.0.4",
         "guzzlehttp/psr7": "^2.0",
         "klevu/module-m2-analytics-api": "~1.0.0",
-        "klevu/module-m2-analytics-order-sync": "~1.0.2",
-        "klevu/module-m2-analytics-order-sync-api": "~1.0.0",
+        "klevu/module-m2-analytics-order-sync": "~2.0.0",
+        "klevu/module-m2-analytics-order-sync-api": "~2.0.0",
         "klevu/module-m2-configuration": "^1.0.0",
         "klevu/module-m2-logger": "^1.0.0",
         "klevu/module-m2-pipelines": "^1.0.0",
@@ -16,7 +16,7 @@
         "klevu/php-sdk-pipelines": "^1.0.0"
     },
     "type": "magento2-module",
-    "version": "1.0.3",
+    "version": "1.1.0",
     "license": [
         "MIT"
     ],
