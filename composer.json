@@ -8,7 +8,7 @@
         "klevu/module-m2-analytics-api": "~1.1.0",
         "klevu/module-m2-analytics-order-sync": "~2.1.0",
         "klevu/module-m2-analytics-order-sync-api": "~2.1.0",
-        "klevu/module-m2-configuration": "^1.1.0",
+        "klevu/module-m2-configuration": "^1.3.0",
         "klevu/module-m2-logger": "^1.1.0",
         "klevu/module-m2-pipelines": "^1.1.0",
         "klevu/php-pipelines": "^1.1.0",
@@ -16,7 +16,7 @@
         "klevu/php-sdk-pipelines": "^1.1.0"
     },
     "type": "magento2-module",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "license": [
         "MIT"
     ],
